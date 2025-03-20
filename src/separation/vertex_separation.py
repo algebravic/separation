@@ -161,6 +161,11 @@ class VertexSeparation:
             clause_info = (len(self._cnf.clauses) if bound is not None
                 else (len(self._cnf.hard), len(self._cnf.soft)))
             print("Created the model with {clause_info} clauses")
+
+    @property
+    def clauses(self):
+
+        return self._cnf.hard if self._bound is None else self._cnf.clauses
         
     def _model(self):
         # Hard constraints
@@ -196,12 +201,14 @@ class VertexSeparation:
             self._cnf.extend([[self._pool.id(('z', _)), -self._pool.id(('z', _ + 1))]
                               for _ in range(1, self._limit)])
             zneg = [-self._pool.id(('z', _)) for _ in range(1, self._limit + 1)]
+            self._cnf.extend([[-self._pool.id(('z', _))] for for _ in range(1, self._limit + 1)],
+                             weights = self._limit * [1])
                 
         # (v occurs at time <= t) => (w occurs at time > t) OR (w occurs at time <= t)
         # where w is a neighbor of v
         for tme in range(1, self._limit + 1):
             if self._trace > 0 and (tme % self._trace == 0):
-                print(f"Created directed clauses at time {tme}")
+                print(f"Created {len(self.clauses)} clauses at time {tme}")
             self._cnf.extend([
                 [-self._pool.id(('y', (node, tme))),
                  # self._pool.id(('u', (nbr, tme))),
@@ -212,8 +219,6 @@ class VertexSeparation:
 
             # Objective to be minimized
             # Objective = sum_t z[t] to be minimized: take complement for maxsat
-            if self._bound is None:
-                self._cnf.append([-self._pool.id(('z', tme))], weight=1)
             #   sum(v in V) y[v,t] = t for 1 <= t <= n
             # Exactly t nodes are allocated from 1 to t
             ylits = [self._pool.id(('y', (_, tme))) for _ in self._graph.nodes]
