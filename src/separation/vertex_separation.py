@@ -193,8 +193,8 @@ class VertexSeparation:
         #     for nbr in nx.neighbors(self._graph, _[0])])
         # z non-increasing
         if self._bound is None:
-                self._cnf.extend([[self._pool.id(('z', _)), -self._pool.id(('z', _ + 1))]
-                                for _ in range(1, self._limit)])
+            self._cnf.extend([[self._pool.id(('z', _)), -self._pool.id(('z', _ + 1))]
+                              for _ in range(1, self._limit)])
             zneg = [-self._pool.id(('z', _)) for _ in range(1, self._limit + 1)]
                 
         # (v occurs at time <= t) => (w occurs at time > t) OR (w occurs at time <= t)
