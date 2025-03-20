@@ -144,7 +144,8 @@ class VertexSeparation:
 
         self._graph = gph
         self._pool = IDPool()
-        self._cnf = WCNF() if bound else CNF()
+        self._cnf = WCNF() if bound is None else CNF()
+        print(f"bound = {bound}, type(cnf) = {type(self._cnf)}")
         self._size = len(self._graph.nodes)
         self._nbr = self._graph.neighbors if isinstance(gph, nx.Graph) else self._graph.predecessors
         # encoding for general cardinality constraints
