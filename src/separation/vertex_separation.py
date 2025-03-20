@@ -138,6 +138,7 @@ class VertexSeparation:
 
     def __init__(self, gph: nx.Graph | nx.DiGraph,
                  verbose: int  = 0,
+                 trace: int = 0,
                  bound: int | None = None,
                  # limit: int | None = None,
                  encode='totalizer'):
@@ -145,7 +146,6 @@ class VertexSeparation:
         self._graph = gph
         self._pool = IDPool()
         self._cnf = WCNF() if bound is None else CNF()
-        print(f"bound = {bound}, type(cnf) = {type(self._cnf)}")
         self._size = len(self._graph.nodes)
         self._nbr = self._graph.neighbors if isinstance(gph, nx.Graph) else self._graph.predecessors
         # encoding for general cardinality constraints
@@ -155,12 +155,14 @@ class VertexSeparation:
         self._limit = self._size
         self._bound = bound
         self._verbose = verbose
+        self._trace = trace
         self._model()
         if self._verbose > 0:
-            print("Created the model with {len(self._cnf.clauses)} clauses")
+            clause_info = (len(self._cnf.clauses) if bound is not None
+                else (len(self._cnf.hard), len(self._cnf.soft)))
+            print("Created the model with {clause_info} clauses")
         
     def _model(self):
-
         # Hard constraints
         # #   x[v,t] <= x[v,t+1] for v in V, 1 <= t <= n-1
         # self._cnf.extend([
@@ -183,6 +185,7 @@ class VertexSeparation:
         self._cnf.extend([
             [-self._pool.id(('y', _)), self._pool.id(('y', (_[0], _[1] + 1)))]
             for _ in product(self._graph.nodes, range(1, self._limit))])
+                
         # #   y[v,t] <= x[w,t] for v in V, w in N+(v), 1 <= t <=n
         # self._cnf.extend([
         #     [-self._pool.id(('y', _)), self._pool.id(('x', (nbr, _[1])))]
@@ -190,12 +193,15 @@ class VertexSeparation:
         #     for nbr in nx.neighbors(self._graph, _[0])])
         # z non-increasing
         if self._bound is None:
-            self._cnf.extend([[self._pool.id(('z', _)), -self._pool.id(('z', _ + 1))]
-                            for _ in range(1, self._limit)])
+                self._cnf.extend([[self._pool.id(('z', _)), -self._pool.id(('z', _ + 1))]
+                                for _ in range(1, self._limit)])
             zneg = [-self._pool.id(('z', _)) for _ in range(1, self._limit + 1)]
+                
         # (v occurs at time <= t) => (w occurs at time > t) OR (w occurs at time <= t)
         # where w is a neighbor of v
         for tme in range(1, self._limit + 1):
+            if self._trace > 0 and (tme % self._trace == 0):
+                print(f"Created directed clauses at time {tme}")
             self._cnf.extend([
                 [-self._pool.id(('y', (node, tme))),
                  # self._pool.id(('u', (nbr, tme))),
@@ -218,10 +224,10 @@ class VertexSeparation:
             # sum_t z[t] >= sum_v u[v,t_0]: left hand sum is an upper bound
             ulits = [self._pool.id(('u', (_, tme))) for _ in self._graph.nodes]
             #   sum(v in V) u[v,t] <= z for 1 <= t <= n
-            if self._bound is None:
+            if self._bound is None: # We are minimizing
                 bnd = self._limit
                 xlits = ulits + zneg
-            else:
+            else: # We are looking for feasibility for a bound
                 bnd = self._bound
                 xlits = ulits
             self._cnf.extend(CardEnc.atmost(lits = xlits,
