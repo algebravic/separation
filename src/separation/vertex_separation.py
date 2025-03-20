@@ -137,6 +137,7 @@ from pysat.card import CardEnc, EncType
 class VertexSeparation:
 
     def __init__(self, gph: nx.Graph | nx.DiGraph,
+                 verbose: int  = 0,
                  bound: int | None = None,
                  # limit: int | None = None,
                  encode='totalizer'):
