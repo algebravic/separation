@@ -153,7 +153,10 @@ class VertexSeparation:
         #self._limit = self._size if limit is None else limit
         self._limit = self._size
         self._bound = bound
+        self._verbose = verbose
         self._model()
+        if self._verbose > 0:
+            print("Created the model with {len(self._cnf.clauses)} clauses")
         
     def _model(self):
 
