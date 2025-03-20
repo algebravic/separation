@@ -245,8 +245,12 @@ class VertexSeparation:
             if kwds.get('verbose', 0) > 0:
                 print(f"Time = {max_solver.oracle_time()}")
         else: # Use ordinary SAT
-            mysolver = Solver(name = solver, bootstrap_with = self._cnf)
+            mysolver = Solver(name = solver,
+                bootstrap_with = self._cnf,
+                use_timer = True)
             soln = mysolver.solver()
+            if kwds.get('verbose', 0) > 0:
+                print(f"Time = {mysolver.time()}")
             
         pos = [self._pool.obj(_) for _ in soln if _ > 0]
         if self._bound is None:
