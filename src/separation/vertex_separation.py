@@ -201,7 +201,7 @@ class VertexSeparation:
             self._cnf.extend([[self._pool.id(('z', _)), -self._pool.id(('z', _ + 1))]
                               for _ in range(1, self._limit)])
             zneg = [-self._pool.id(('z', _)) for _ in range(1, self._limit + 1)]
-            self._cnf.extend([[-self._pool.id(('z', _))] for for _ in range(1, self._limit + 1)],
+            self._cnf.extend([[-self._pool.id(('z', _))] for _ in range(1, self._limit + 1)],
                              weights = self._limit * [1])
                 
         # (v occurs at time <= t) => (w occurs at time > t) OR (w occurs at time <= t)
