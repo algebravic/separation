@@ -128,11 +128,12 @@
 
 """
 from typing import Dict, Hashable, Tuple, List
-from itertools import product, chain
+from itertools import product, chain, islice
 import networkx as nx
 from pysat.formula import IDPool, WCNF, CNF
 from pysat.examples.rc2 import RC2, RC2Stratified
 from pysat.card import CardEnc, EncType
+from pysat.solvers import Solver
 
 class VertexSeparation:
 
@@ -249,6 +250,22 @@ class VertexSeparation:
         #     for _ in product(self._graph.nodes, range(1, self._limit + 1))])
 
 
+    def get_solution(self, soln) -> Tuple[int, List[Hashable]]:
+        pos = [self._pool.obj(_) for _ in soln if _ > 0]
+        if self._bound is None:
+            mylen = len([_[1] for _ in pos
+                if _ is not None and _[0] == 'z'])
+        else:
+            mylen = self._bound
+        yvars = [_ for _ in pos if _ is not None and _[0] == 'y']
+            
+        return mylen, yvars
+
+    def get_order(self, yvars) -> Dict[Hashable, int]:
+        yvals = {_[1] for _ in yvars}
+        return {node: min((_[1] for _ in yvals if _[0] == node))
+            for node in self._graph.nodes}
+        
     def solve(self,
               solver = 'cd195',
               stratified: bool = False,
@@ -257,9 +274,25 @@ class VertexSeparation:
             maxsat_solver = RC2Stratified if stratified else RC2
             print(f"{'' if stratified else 'un'}stratified")
             max_solver = maxsat_solver(self._cnf, solver = solver, **kwds)
-            soln = max_solver.compute()
-            if kwds.get('verbose', 0) > 0:
-                print(f"Time = {max_solver.oracle_time()}")
+            slen = None
+            # We must block the actual y variables
+            while True:
+                soln = max_solver.compute()
+                if kwds.get('verbose', 0) > 0:
+                    print(f"Time = {max_solver.oracle_time()}")
+                if soln is None:
+                    break
+                mylen, yvars = self.get_solution(soln)
+                yorder = self.get_order(yvars)
+                if slen is None:
+                    slen = mylen
+                    yield mylen, yorder
+                elif slen == mylen:
+                    yield mylen, yorder
+                else:
+                    break
+                # Now block the y variables
+                max_solver.add_clause([- self._pool.id(_) for _ in yvars])
         else: # Use ordinary SAT
             mysolver = Solver(name = solver,
                 bootstrap_with = self._cnf,
@@ -267,21 +300,12 @@ class VertexSeparation:
             soln = mysolver.solver()
             if kwds.get('verbose', 0) > 0:
                 print(f"Time = {mysolver.time()}")
-            
-        pos = [self._pool.obj(_) for _ in soln if _ > 0]
-        if self._bound is None:
-            mylen = len([_[1] for _ in pos
-                if _ is not None and _[0] == 'z'])
-        else:
-            mylen = self._bound
-        yvals = {_[1] for _ in pos if _ is not None and _[0] == 'y'}
-
-        yorder = {node: min((_[1] for _ in yvals if _[0] == node))
-            for node in self._graph.nodes}
-        return mylen, yorder
+            mylen, yvars = get_solution(soln)
+            yield mylen, self.get_order(yvars)
         
 def pathwidth_order(gph: nx.Graph | nx.DiGraph,
                     bound: int | None = None,
+                    all_solutions: bool = False,
                     **kwds) -> Tuple[int, List[Hashable]]:
 
     """
@@ -290,8 +314,12 @@ def pathwidth_order(gph: nx.Graph | nx.DiGraph,
     """
 
     vsp = VertexSeparation(gph, bound = bound)
-    sep, renumber = vsp.solve(**kwds)
-    return sep, [_[0] for _ in sorted(renumber.items(), key=lambda _: _[1])]
+    if all_solutions:
+        for sep, renumber in vsp.solve(**kwds):
+            yield sep, [_[0] for _ in sorted(renumber.items(), key=lambda _: _[1])]
+    else:
+        sep, renumber = next(vsp.solve(**kwds))
+        return sep, [_[0] for _ in sorted(renumber.items(), key=lambda _: _[1])]
 
 def separation(gph: nx.Graph | nx.DiGraph) -> int:
 
