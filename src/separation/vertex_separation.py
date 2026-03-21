@@ -297,7 +297,8 @@ class VertexSeparation:
             mysolver = Solver(name = solver,
                 bootstrap_with = self._cnf,
                 use_timer = True)
-            soln = mysolver.solve()
+            mysolver.solve()
+            soln = mysolver.get_model()
             if kwds.get('verbose', 0) > 0:
                 print(f"Time = {mysolver.time()}")
             mylen, yvars = self.get_solution(soln)
