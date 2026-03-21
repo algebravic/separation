@@ -280,7 +280,7 @@ class VertexSeparation:
             if soln is None:
                 break
             mylen, yvars = self.get_solution(soln)
-                yorder = self.get_order(yvars)
+            yorder = self.get_order(yvars)
             if slen is None:
                 slen = mylen
                 yield mylen, yorder
