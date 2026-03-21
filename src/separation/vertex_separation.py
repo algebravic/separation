@@ -314,7 +314,7 @@ def pathwidth_order(gph: nx.Graph | nx.DiGraph,
     """
 
     vsp = VertexSeparation(gph, bound = bound)
-    solutions = (sep, [_[0] for _ in sorted(renumber.items(), key=lambda _: _[1])]
+    solutions = ((sep, [_[0] for _ in sorted(renumber.items(), key=lambda _: _[1])])
                  for sep, renumber in vsp.solve(**kwds))
     return solutions if all_solutions else next(solutions)
 
