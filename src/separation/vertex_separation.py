@@ -300,7 +300,7 @@ class VertexSeparation:
             soln = mysolver.solve()
             if kwds.get('verbose', 0) > 0:
                 print(f"Time = {mysolver.time()}")
-            mylen, yvars = get_solution(soln)
+            mylen, yvars = self.get_solution(soln)
             yield mylen, self.get_order(yvars)
         
 def pathwidth_order(gph: nx.Graph | nx.DiGraph,
