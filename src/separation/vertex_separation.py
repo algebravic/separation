@@ -1,4 +1,3 @@
-
 """Use the MILP formulation given in
   https://doc.sagemath.org/html/en/reference/graphs/sage/graphs/graph_decompositions/vertex_separation.html
 
@@ -146,7 +145,7 @@ class VertexSeparation:
 
         self._graph = gph
         self._pool = IDPool()
-        self._cnf = WCNF() if bound is None else CNF()
+        self._cnf = WCNF()
         self._size = len(self._graph.nodes)
         self._nbr = self._graph.neighbors if isinstance(gph, nx.Graph) else self._graph.predecessors
         # encoding for general cardinality constraints
@@ -166,7 +165,7 @@ class VertexSeparation:
     @property
     def clauses(self):
 
-        return self._cnf.hard if self._bound is None else self._cnf.clauses
+        return self._cnf.clauses
         
     def _model(self):
         # Hard constraints
@@ -198,13 +197,11 @@ class VertexSeparation:
         #     for _ in product(self._graph.nodes, range(1, self._limit + 1))
         #     for nbr in nx.neighbors(self._graph, _[0])])
         # z non-increasing
-        if self._bound is None:
-            self._cnf.extend([[self._pool.id(('z', _)), -self._pool.id(('z', _ + 1))]
-                              for _ in range(1, self._limit)])
-            zneg = [-self._pool.id(('z', _)) for _ in range(1, self._limit + 1)]
-            self._cnf.extend([[-self._pool.id(('z', _))] for _ in range(1, self._limit + 1)],
-                             weights = self._limit * [1])
-                
+        self._cnf.extend([[self._pool.id(('z', _)), -self._pool.id(('z', _ + 1))]
+                          for _ in range(1, self._limit)])
+        zneg = [-self._pool.id(('z', _)) for _ in range(1, self._limit + 1)]
+        self._cnf.extend([[-self._pool.id(('z', _))] for _ in range(1, self._limit + 1)],
+                         weights = self._limit * [1])
         # (v occurs at time <= t) => (w occurs at time > t) OR (w occurs at time <= t)
         # where w is a neighbor of v
         for tme in range(1, self._limit + 1):
@@ -270,39 +267,29 @@ class VertexSeparation:
               solver = 'cd195',
               stratified: bool = False,
               **kwds) -> Tuple[int, Dict[Hashable, int]]:
-        if self._bound is None:
-            maxsat_solver = RC2Stratified if stratified else RC2
-            print(f"{'' if stratified else 'un'}stratified")
-            max_solver = maxsat_solver(self._cnf, solver = solver, **kwds)
-            slen = None
-            # We must block the actual y variables
-            while True:
-                soln = max_solver.compute()
-                if kwds.get('verbose', 0) > 0:
-                    print(f"Time = {max_solver.oracle_time()}")
-                if soln is None:
-                    break
-                mylen, yvars = self.get_solution(soln)
-                yorder = self.get_order(yvars)
-                if slen is None:
-                    slen = mylen
-                    yield mylen, yorder
-                elif slen == mylen:
-                    yield mylen, yorder
-                else:
-                    break
-                # Now block the y variables
-                max_solver.add_clause([- self._pool.id(_) for _ in yvars])
-        else: # Use ordinary SAT
-            mysolver = Solver(name = solver,
-                bootstrap_with = self._cnf,
-                use_timer = True)
-            mysolver.solve()
-            soln = mysolver.get_model()
+
+        maxsat_solver = RC2Stratified if stratified else RC2
+        print(f"{'' if stratified else 'un'}stratified")
+        max_solver = maxsat_solver(self._cnf, solver = solver, **kwds)
+        slen = None
+        # We must block the actual y variables
+        while True:
+            soln = max_solver.compute()
             if kwds.get('verbose', 0) > 0:
-                print(f"Time = {mysolver.time()}")
+                print(f"Time = {max_solver.oracle_time()}")
+            if soln is None:
+                break
             mylen, yvars = self.get_solution(soln)
-            yield mylen, self.get_order(yvars)
+                yorder = self.get_order(yvars)
+            if slen is None:
+                slen = mylen
+                yield mylen, yorder
+            elif slen == mylen:
+                yield mylen, yorder
+            else:
+                break
+                # Now block the y variables
+            max_solver.add_clause([- self._pool.id(_) for _ in yvars])
         
 def pathwidth_order(gph: nx.Graph | nx.DiGraph,
                     bound: int | None = None,
