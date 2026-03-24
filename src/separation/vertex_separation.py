@@ -234,16 +234,16 @@ class VertexSeparation:
             # sum_t z[t] >= sum_v u[v,t_0]: left hand sum is an upper bound
             ulits = [self._uvars[_, tme] for _ in self._graph.nodes]
             #   sum(v in V) u[v,t] <= z for 1 <= t <= n
-            if self._bound is None: # We are minimizing
-                bnd = self._limit
-                xlits = ulits + zneg
-            else: # We are looking for feasibility for a bound
-                bnd = self._bound
-                xlits = ulits
+            # We are minimizing
+            
+            bnd = self._limit
+            xlits = ulits + zneg
             self._cnf.extend(CardEnc.atmost(lits = xlits,
                                             bound = bnd,
                                             encoding = self._encode,
                                             vpool = self._pool))
+            if self._bound is not None:
+                self._cnf.append([- self._zvars[bound + 1]])
         #   x[v,t] - y[v,t] <= u[v,t] for v in V, 1 <= t <= n
         # self._cnf.extend([
         #     [self._pool.id(('y', _)), self._pool.id(('u', _)), - self._pool.id(('x', _))]
@@ -272,12 +272,8 @@ class VertexSeparation:
 
     def limit_card(self, card: int):
 
-        zneg = [- _ for _ in self._zvars.values()]
-        for clause in CardEnc.atmost(lits = zneg,
-                                     bound = card,
-                                     encoding = self._encode,
-                                     vpool = self._pool):
-            self._max_solver.add_clause(clause)
+        self._max_solver.add_clause([- self._zvars[card + 1]])
+        # Unit propagation will get rid of the rest
         # New objective: the u variables
         for tme in range(1, self._limit+1):
             for node in self._graph.nodes:
