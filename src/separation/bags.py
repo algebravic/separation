@@ -17,7 +17,7 @@ def bag_decomposition(gph: nx.Graph, order: Iterable[Hashable]) -> nx.Graph:
 
     ngph = gph.copy()
     bags = {}
-    for ind, node in enumeration(order):
+    for ind, node in enumerate(order):
 
         nbrs = ngph.neighbors(node)
         bags[node] = frozenset([node]).union(set(order[ind + 1:]).intersection(nbrs))
@@ -30,7 +30,7 @@ def bag_decomposition(gph: nx.Graph, order: Iterable[Hashable]) -> nx.Graph:
     # Now create the tree
     tgph = nx.Graph()
 
-    for ind, node in enumeration(order):
+    for ind, node in enumerate(order):
 
         # Find the bag that share the most vertices with it.
         tbag = bags[node]
