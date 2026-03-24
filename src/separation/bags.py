@@ -4,7 +4,7 @@
   
 """
 from typing import Hashable, Tuple, Iterable
-from itertools import combinations
+from itertools import combinations, islice
 import networkx as nx
 
 def bag_decomposition(gph: nx.Graph, order: Iterable[Hashable],
@@ -64,10 +64,10 @@ def bag_decomposition(gph: nx.Graph, order: Iterable[Hashable],
             tbag = bags[node]
             if len(tbag) == 1:
                 print(f"{node} is alone!")
-            cand = next((_ for _ in norder if _ in bags and tbag.intersection(bags[_])))
-            if len(tbag.intersection(bags[cand])) == 0:
-                print(f"{node} has no edge")
-            tgph.add_edge(tbag, bags[cand])
+            cand = list(islice((_ for _ in norder
+                                if _ in bags and tbag.intersection(bags[_]))), 1)
+            if cand:
+                tgph.add_edge(tbag, bags[cand[0]])
         else:
             print(f"The node {node} only has back edges.")
 
