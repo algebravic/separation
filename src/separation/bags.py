@@ -67,10 +67,12 @@ def bag_decomposition(gph: nx.Graph, order: Iterable[Hashable],
                 print(f"{node} is alone!")
             cands = (_ for _ in norder if _ in bags and tbag.intersection(bags[_]))
             try:
-                cand = (max((_ for _ in cands),
-                           key = lambda arg: len(tbag.intersection(bags[arg])))
+                cand = (max(cands,
+                            default = None,
+                           key = lambda _: len(tbag.intersection(bags[_])))
                         if maximal else next(cands))
-                tgph.add_edge(tbag, bags[cand])
+                if cand is not None:
+                    tgph.add_edge(tbag, bags[cand])
             except StopIteration:
                 pass # con't do anything
         else:
