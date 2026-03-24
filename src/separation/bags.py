@@ -39,5 +39,7 @@ def bag_decomposition(gph: nx.Graph, order: Iterable[Hashable]) -> nx.Graph:
                    key = lambda _: len(tbag.intersection(bags[_])))
         if cand is not None and tbag.intersection(bags[cand]):
             tgph.add_edge(tbag, bags[cand])
+        else:
+            tgph.add_node(tbag)
 
     return tgph
