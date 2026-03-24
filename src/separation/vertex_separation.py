@@ -187,8 +187,14 @@ class VertexSeparation:
         # 2) u[v,t]: True if vertex v occurs in the path at time > t and has a neighbor at time <= t
         # 3) z[t]: Used for upper bounding successive sums of u[v,t]
         # (v occurs at time <= t) => (v occurs at time <= t+1)
+        self._yvars = {_: self._pool.id(('y', _))
+                       for _ in product(self._graph.nodes, range(1, self._limit+1))}
+        self._uvars = {_: self._pool.id(('u', _))
+                       for _ in product(self._graph.nodes, range(1, self._limit+1))}
+        self._zvars = {_: self._pool.id(('z', _))
+                       for _ in range(1, self._limit+1)}
         self._cnf.extend([
-            [-self._pool.id(('y', _)), self._pool.id(('y', (_[0], _[1] + 1)))]
+            [-self._yvars[_], self._yvars[_[0], _[1] + 1]]
             for _ in product(self._graph.nodes, range(1, self._limit))])
                 
         # #   y[v,t] <= x[w,t] for v in V, w in N+(v), 1 <= t <=n
@@ -197,10 +203,10 @@ class VertexSeparation:
         #     for _ in product(self._graph.nodes, range(1, self._limit + 1))
         #     for nbr in nx.neighbors(self._graph, _[0])])
         # z non-increasing
-        self._cnf.extend([[self._pool.id(('z', _)), -self._pool.id(('z', _ + 1))]
+        self._cnf.extend([[self._zvars[_], -self._zvars[_ + 1]]
                           for _ in range(1, self._limit)])
-        zneg = [-self._pool.id(('z', _)) for _ in range(1, self._limit + 1)]
-        self._cnf.extend([[-self._pool.id(('z', _))] for _ in range(1, self._limit + 1)],
+        zneg = [-_ for _ in self._zvars.values()]
+        self._cnf.extend([[-self._zvars[_]] for _ in range(1, self._limit + 1)],
                          weights = self._limit * [1])
         # (v occurs at time <= t) => (w occurs at time > t) OR (w occurs at time <= t)
         # where w is a neighbor of v
@@ -208,10 +214,11 @@ class VertexSeparation:
             if self._trace > 0 and (tme % self._trace == 0):
                 print(f"Created {len(self.clauses)} clauses at time {tme}")
             self._cnf.extend([
-                [-self._pool.id(('y', (node, tme))),
+                [-self._yvars[node, tme],
                  # self._pool.id(('u', (nbr, tme))),
-                 self._pool.id(('u', (node, tme))),
-                 self._pool.id(('y', (nbr, tme)))]
+                 self._uvars[node, tme],
+                 self._yvars[nbr, tme]
+                 ]
                 for node in self._graph.nodes
                 for nbr in self._nbr(node)])
 
@@ -219,13 +226,13 @@ class VertexSeparation:
             # Objective = sum_t z[t] to be minimized: take complement for maxsat
             #   sum(v in V) y[v,t] = t for 1 <= t <= n
             # Exactly t nodes are allocated from 1 to t
-            ylits = [self._pool.id(('y', (_, tme))) for _ in self._graph.nodes]
+            ylits = [self._yvars[_, tme] for _ in self._graph.nodes]
             self._cnf.extend(CardEnc.equals(lits = ylits,
                                             bound = tme,
                                             encoding = self._encode,
                                             vpool = self._pool))
             # sum_t z[t] >= sum_v u[v,t_0]: left hand sum is an upper bound
-            ulits = [self._pool.id(('u', (_, tme))) for _ in self._graph.nodes]
+            ulits = [self._uvars[_, tme] for _ in self._graph.nodes]
             #   sum(v in V) u[v,t] <= z for 1 <= t <= n
             if self._bound is None: # We are minimizing
                 bnd = self._limit
@@ -262,21 +269,41 @@ class VertexSeparation:
         yvals = {_[1] for _ in yvars}
         return {node: min((_[1] for _ in yvals if _[0] == node))
             for node in self._graph.nodes}
-        
+
+    def limit_card(self, card: int):
+
+        zneg = [- _ for _ in self._zvars.values()]
+        for clause in CardEnc.atmost(lits = zneg,
+                                     bound = card,
+                                     encoding = self._encode,
+                                     vpool = self._pool):
+            self._max_solver.add_clause(clause)
+        # New objective: the u variables
+        for tme in range(1, self._limit+1):
+            for node in self._graph.nodes:
+                self._max_solver.add_clause([-self._uvars[node, tme]],
+                                            weight = 1)
     def solve(self,
               solver = 'cd195',
               stratified: bool = False,
+              minimize_profile: bool = False,
               **kwds) -> Tuple[int, Dict[Hashable, int]]:
 
-        maxsat_solver = RC2Stratified if stratified else RC2
+        self._maxsat_solver = RC2Stratified if stratified else RC2
         print(f"{'' if stratified else 'un'}stratified")
-        max_solver = maxsat_solver(self._cnf, solver = solver, **kwds)
+        self._max_solver = self._maxsat_solver(self._cnf, solver = solver, **kwds)
         slen = None
         # We must block the actual y variables
+        if minimize_profile:
+            # First solve once, to find the pathwidth_order
+            # Then restrict to <= that and add secondary objective
+            soln = self._max_solver.compute()
+            mylen, yvars = self.get_solution(soln)
+            self.limit_card(mylen)
         while True:
-            soln = max_solver.compute()
+            soln = self._max_solver.compute()
             if kwds.get('verbose', 0) > 0:
-                print(f"Time = {max_solver.oracle_time()}")
+                print(f"Time = {self._max_solver.oracle_time()}")
             if soln is None:
                 break
             mylen, yvars = self.get_solution(soln)
@@ -289,11 +316,12 @@ class VertexSeparation:
             else:
                 break
                 # Now block the y variables
-            max_solver.add_clause([- self._pool.id(_) for _ in yvars])
+            self._max_solver.add_clause([- self._pool.id(_) for _ in yvars])
         
 def pathwidth_order(gph: nx.Graph | nx.DiGraph,
                     bound: int | None = None,
                     all_solutions: bool = False,
+                    minimize_profile: bool = False,
                     **kwds) -> Tuple[int, List[Hashable]]:
 
     """
@@ -303,7 +331,7 @@ def pathwidth_order(gph: nx.Graph | nx.DiGraph,
 
     vsp = VertexSeparation(gph, bound = bound)
     solutions = ((sep, [_[0] for _ in sorted(renumber.items(), key=lambda _: _[1])])
-                 for sep, renumber in vsp.solve(**kwds))
+                 for sep, renumber in vsp.solve(**kwds, minimize_profile = minimize_profile))
     return solutions if all_solutions else next(solutions)
 
 def separation(gph: nx.Graph | nx.DiGraph) -> int:
