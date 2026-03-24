@@ -8,6 +8,7 @@ from itertools import combinations, islice
 import networkx as nx
 
 def bag_decomposition(gph: nx.Graph, order: Iterable[Hashable],
+                      maximal: bool = False,
                       verbose: bool = False) -> nx.Graph:
     """
       Given an undirected graph, G, and an ordering of its vertices
@@ -64,10 +65,14 @@ def bag_decomposition(gph: nx.Graph, order: Iterable[Hashable],
             tbag = bags[node]
             if len(tbag) == 1:
                 print(f"{node} is alone!")
-            cand = list(islice((_ for _ in norder
-                                if _ in bags and tbag.intersection(bags[_])), 1))
-            if cand:
-                tgph.add_edge(tbag, bags[cand[0]])
+            cands = (_ for _ in norder if _ in bags and tbag.intersection(bags[_]))
+            try:
+                cand = (max((_ for _ in cands),
+                           key = lambda arg: len(tbag.intersection(bags[arg])))
+                        if maximal else next(cands))
+                tgph.add_edge(tbag, bags[cand])
+            except StopIteration:
+                pass # con't do anything
         else:
             print(f"The node {node} only has back edges.")
 
