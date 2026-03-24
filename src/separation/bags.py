@@ -65,7 +65,7 @@ def bag_decomposition(gph: nx.Graph, order: Iterable[Hashable],
             if len(tbag) == 1:
                 print(f"{node} is alone!")
             cand = list(islice((_ for _ in norder
-                                if _ in bags and tbag.intersection(bags[_]))), 1)
+                                if _ in bags and tbag.intersection(bags[_])), 1))
             if cand:
                 tgph.add_edge(tbag, bags[cand[0]])
         else:
