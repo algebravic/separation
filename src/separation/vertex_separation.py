@@ -243,7 +243,7 @@ class VertexSeparation:
                                             encoding = self._encode,
                                             vpool = self._pool))
             if self._bound is not None:
-                self._cnf.append([- self._zvars[bound + 1]])
+                self._cnf.append([- self._zvars[self._bound + 1]])
         #   x[v,t] - y[v,t] <= u[v,t] for v in V, 1 <= t <= n
         # self._cnf.extend([
         #     [self._pool.id(('y', _)), self._pool.id(('u', _)), - self._pool.id(('x', _))]
@@ -272,6 +272,8 @@ class VertexSeparation:
 
     def limit_card(self, card: int):
 
+        for tme in range(1, card + 1):
+            self._max_solver.add_clause([self._zvars[tme]])
         self._max_solver.add_clause([- self._zvars[card + 1]])
         # Unit propagation will get rid of the rest
         # New objective: the u variables
