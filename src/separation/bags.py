@@ -21,7 +21,7 @@ def bag_decomposition(gph: nx.Graph, order: Iterable[Hashable]) -> nx.Graph:
 
         nbrs = ngph.neighbors(node)
         bags[node] = frozenset([node]).union(set(order[ind + 1:]).intersection(nbrs))
-        ngph.remove(node)
+        ngph.remove_node(node)
 
         # Make the neighbors a clique
         ngph.add_edges_from(combinations(nbrs, 2))
