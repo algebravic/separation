@@ -3,12 +3,6 @@ revision = 3
 requires-python = ">=3.13"
 
 [[package]]
-name = "network"
-version = "0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/cb/72/0769291af36fb6020d000337ee219456ea779c03cf3124831e901f12ed13/network-0.1.tar.gz", hash = "sha256:786b171895c3ecaaf05948c29e206ab99285f328f799c3bbc5e22a2805bfc27f", size = 2765, upload-time = "2017-02-28T23:37:45.558Z" }
-
-[[package]]
 name = "networkx"
 version = "3.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -50,17 +44,15 @@ wheels = [
 
 [[package]]
 name = "separation"
-version = "0.1.0"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
-    { name = "network" },
     { name = "networkx" },
     { name = "python-sat" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "network", specifier = ">=0.1,<0.2" },
     { name = "networkx", specifier = ">=3.6.1" },
     { name = "python-sat", specifier = ">=1.8.dev16,<2.0" },
 ]
