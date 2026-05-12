@@ -302,7 +302,7 @@ class VertexSeparation:
         while True:
             soln = self._max_solver.compute()
             if kwds.get('verbose', 0) > 0:
-                print(f"Stats = {self._max_solver.accum_stats()}")
+                print(f"Stats = {self._max_solver.oracle.accum_stats()}")
             if soln is None:
                 break
             mylen, yvars = self.get_solution(soln)
