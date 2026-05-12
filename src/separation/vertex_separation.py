@@ -288,7 +288,8 @@ class VertexSeparation:
               **kwds) -> Tuple[int, Dict[Hashable, int]]:
 
         self._maxsat_solver = RC2Stratified if stratified else RC2
-        print(f"{'' if stratified else 'un'}stratified")
+        if kwds.get('verbose', 0) > 0:
+            print(f"{'' if stratified else 'un'}stratified")
         self._max_solver = self._maxsat_solver(self._cnf, solver = solver, **kwds)
         slen = None
         # We must block the actual y variables
@@ -301,7 +302,7 @@ class VertexSeparation:
         while True:
             soln = self._max_solver.compute()
             if kwds.get('verbose', 0) > 0:
-                print(f"Time = {self._max_solver.oracle_time()}")
+                print(f"Stats = {self._max_solver.accum_stats()}")
             if soln is None:
                 break
             mylen, yvars = self.get_solution(soln)
